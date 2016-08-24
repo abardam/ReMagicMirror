@@ -1,0 +1,35 @@
+#version 330 core
+const int LIGHT_COUNT = 3;
+const int LIGHT_SIZE = 4;
+const int AMBIENT = 0;
+const int DIFFUSE = 1;
+const int SPECULAR = 2;
+const int POSITION = 3;
+uniform vec4 lights[LIGHT_COUNT * LIGHT_SIZE];
+
+out vec3 EC_Light_half[LIGHT_COUNT];
+out vec3 EC_Light_location[LIGHT_COUNT];
+out vec3 baseNormal;
+out vec2 UV;
+
+layout(location = 0) in vec3 vertexPosition_modelspace;
+layout(location = 1) in vec2 vertexUV;
+layout(location = 2) in vec3 vertexNormal;
+
+uniform mat4 MVP;
+uniform mat3 normalMatrix;
+
+void main(){
+	gl_Position = MVP * vec4(vertexPosition_modelspace, 1);
+	UV = vertexUV;
+	baseNormal = normalMatrix * normalize(vertexNormal);
+	
+	for(int i=0; i<LIGHT_COUNT; i++){
+		EC_Light_location[i] = normalize(
+			normalMatrix * lights[(i*LIGHT_SIZE)+POSITION].xyz
+		);
+		//half-vector
+		EC_Light_half[i] = normalize(EC_Light_location[i] - vec3(0,0,-1));
+	}
+}
+

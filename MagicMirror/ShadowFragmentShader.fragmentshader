@@ -1,0 +1,69 @@
+#version 330 core
+const int LIGHT_COUNT = 3;
+const int LIGHT_SIZE = 4;
+const int AMBIENT = 0;
+const int DIFFUSE = 1;
+const int SPECULAR = 2;
+const int POSITION = 3;
+uniform vec4 lights[LIGHT_COUNT * LIGHT_SIZE];
+
+in vec3 EC_Light_half[LIGHT_COUNT];
+in vec3 EC_Light_location[LIGHT_COUNT];
+in vec3 baseNormal;
+in vec2 UV;
+
+vec2 phong_weightCalc(
+	in vec3 light_pos, // light position
+	in vec3 half_light, // half-way vector between light and view
+	in vec3 frag_normal, // geometry normal
+	in float shininess
+) {
+	// returns vec2( ambientMult, diffuseMult )
+	float n_dot_pos = max( 0.0, dot(
+		frag_normal, light_pos
+	));
+	float n_dot_half = 0.0;
+	if (n_dot_pos > -.05) {
+		n_dot_half = pow(max(0.0,dot(
+			half_light, frag_normal
+		)), shininess);
+	}
+	return vec2( n_dot_pos, n_dot_half);
+}
+struct Material {
+	vec4 ambient;
+	vec4 diffuse;
+	vec4 specular;
+	float shininess;
+};
+
+uniform Material material;
+uniform vec4 Global_ambient;
+uniform float tex_weight;
+
+out vec4 color;
+
+uniform sampler2D myTextureSampler;
+
+void main(){
+	vec4 fragColor = Global_ambient * material.ambient;
+
+	int i, j;
+	for (i=0; i<LIGHT_COUNT; i++) {
+		j = i*LIGHT_SIZE;
+
+		vec2 weights = phong_weightCalc(
+			EC_Light_location[i],
+			EC_Light_half[i],
+			baseNormal,
+			material.shininess
+		);
+		fragColor = (
+			fragColor
+			+ (lights[j+AMBIENT] * material.ambient)
+			+ (lights[j+DIFFUSE] * material.diffuse * weights.x)
+			+ (lights[j+SPECULAR] * material.specular * weights.y)
+		);
+	}
+	color = tex_weight * texture(myTextureSampler, UV) + (1.-tex_weight) * fragColor;
+}
